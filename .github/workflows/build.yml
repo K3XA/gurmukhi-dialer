@@ -15,10 +15,9 @@ jobs:
       - name: Unzip project
         run: |
           unzip -oq *.zip
-          echo "=== Project files ==="
-          ls -la
-          echo "=== Gradle files ==="
-          find . -maxdepth 2 -name "gradlew" -o -name "settings.gradle" -o -name "settings.gradle.kts"
+
+          echo "=== Extracted files ==="
+          find . -maxdepth 3 -type f | head -100
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -31,15 +30,39 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Make Gradle executable
-        run: chmod +x ./gradlew
+      - name: Find Android project
+        run: |
+          echo "Searching for Android project..."
+
+          SETTINGS=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: Could not find settings.gradle or settings.gradle.kts"
+            echo "Searching for build.gradle files:"
+            find . -type f \( -name "build.gradle" -o -name "build.gradle.kts" \)
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+
+          echo "Android project found at:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+        run: |
+          cd "$PROJECT_DIR"
+          gradle :app:assembleDebug
+
+      - name: Find APK
+        run: |
+          echo "=== APK files ==="
+          find . -type f -name "*.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GurmukhiDialer-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
