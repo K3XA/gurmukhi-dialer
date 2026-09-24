@@ -1,27 +1,45 @@
 name: Build APK
+
 on:
   push:
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Unzip project
-        run: unzip -q *.zip
-      - uses: actions/setup-java@v4
+        run: |
+          unzip -oq *.zip
+          echo "=== Project files ==="
+          ls -la
+          echo "=== Gradle files ==="
+          find . -maxdepth 2 -name "gradlew" -o -name "settings.gradle" -o -name "settings.gradle.kts"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.9
+          gradle-version: '8.9'
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
       - name: Build debug APK
-        working-directory: GurmukhiDialer
-        run: gradle :app:assembleDebug
-      - uses: actions/upload-artifact@v4
-        if: always()
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: GurmukhiDialer-debug-apk
-          path: GurmukhiDialer/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: ignore
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
